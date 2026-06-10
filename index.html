@@ -1,0 +1,588 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🌌 CHAOS LEGENDS 🌌</title>
+
+<style>
+*{
+    margin:0;
+    padding:0;
+    box-sizing:border-box;
+    font-family:Arial, sans-serif;
+}
+
+body{
+    overflow:hidden;
+    background:black;
+}
+
+canvas{
+    display:block;
+    background:
+    linear-gradient(to bottom,#04142b,#091d3a,#120224);
+}
+
+#ui{
+    position:absolute;
+    top:15px;
+    left:15px;
+    color:white;
+    z-index:100;
+    font-size:20px;
+    text-shadow:0 0 10px cyan;
+    line-height:1.6;
+}
+
+#shop{
+    position:absolute;
+    top:15px;
+    right:15px;
+    background:rgba(0,0,0,0.6);
+    padding:15px;
+    border-radius:15px;
+    color:white;
+    z-index:100;
+    width:220px;
+    border:2px solid cyan;
+}
+
+#shop h2{
+    margin-bottom:10px;
+}
+
+button{
+    width:100%;
+    margin-top:10px;
+    padding:10px;
+    border:none;
+    border-radius:10px;
+    cursor:pointer;
+    background:#00d5ff;
+    color:black;
+    font-weight:bold;
+    transition:0.2s;
+}
+
+button:hover{
+    transform:scale(1.05);
+}
+
+#startScreen, #gameOver{
+    position:absolute;
+    inset:0;
+    background:rgba(0,0,0,0.9);
+    z-index:200;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    flex-direction:column;
+    color:white;
+    text-align:center;
+}
+
+#startScreen h1,
+#gameOver h1{
+    font-size:80px;
+    margin-bottom:20px;
+    color:#00e1ff;
+    text-shadow:0 0 20px cyan;
+}
+
+#startScreen p{
+    width:70%;
+    font-size:22px;
+    line-height:1.5;
+    margin-bottom:30px;
+}
+
+.hidden{
+    display:none !important;
+}
+
+.power{
+    position:absolute;
+    bottom:20px;
+    left:50%;
+    transform:translateX(-50%);
+    color:white;
+    font-size:18px;
+    z-index:100;
+    background:rgba(0,0,0,0.5);
+    padding:10px 20px;
+    border-radius:20px;
+}
+
+img{
+    display:none;
+}
+</style>
+</head>
+
+<body>
+
+<div id="ui">
+    ⭐ Score: <span id="score">0</span><br>
+    💎 Gems: <span id="gems">0</span><br>
+    ❤️ Health: <span id="health">100</span><br>
+    ⚡ Level: <span id="level">1</span>
+</div>
+
+<div id="shop">
+    <h2>🛒 POWER SHOP</h2>
+
+    <button onclick="buySpeed()">⚡ Faster Speed (10 gems)</button>
+    <button onclick="buyLaser()">🔫 Laser Upgrade (20 gems)</button>
+    <button onclick="heal()">❤️ Heal (15 gems)</button>
+</div>
+
+<div class="power">
+    ⌨️ Move: WASD / Arrow Keys | SPACE = Laser Blast
+</div>
+
+<div id="startScreen">
+    <h1>🌌 CHAOS LEGENDS 🌌</h1>
+
+    <p>
+        Survive the cosmic invasion, collect gems, destroy monsters,
+        unlock powers, dodge meteors and become the ultimate legend.
+    </p>
+
+    <button onclick="startGame()">START EPIC GAME</button>
+</div>
+
+<div id="gameOver" class="hidden">
+    <h1>💀 GAME OVER</h1>
+    <h2 id="finalText"></h2>
+    <button onclick="restartGame()">PLAY AGAIN</button>
+</div>
+
+<canvas id="game"></canvas>
+
+<script>
+
+const canvas = document.getElementById("game");
+const ctx = canvas.getContext("2d");
+
+canvas.width = innerWidth;
+canvas.height = innerHeight;
+
+let keys = {};
+
+let gameRunning = false;
+
+let score = 0;
+let gems = 0;
+let level = 1;
+
+const player = {
+    x:canvas.width/2,
+    y:canvas.height/2,
+    size:35,
+    speed:6,
+    health:100,
+    laserPower:1
+};
+
+let bullets = [];
+let enemies = [];
+let particles = [];
+let gemsDrop = [];
+let meteors = [];
+let stars = [];
+
+for(let i=0;i<200;i++){
+    stars.push({
+        x:Math.random()*canvas.width,
+        y:Math.random()*canvas.height,
+        size:Math.random()*3
+    });
+}
+
+document.addEventListener("keydown", e=>{
+    keys[e.key.toLowerCase()] = true;
+
+    if(e.code === "Space"){
+        shoot();
+    }
+});
+
+document.addEventListener("keyup", e=>{
+    keys[e.key.toLowerCase()] = false;
+});
+
+function startGame(){
+
+    document.getElementById("startScreen").classList.add("hidden");
+
+    gameRunning = true;
+
+    animate();
+}
+
+function restartGame(){
+    location.reload();
+}
+
+function shoot(){
+
+    bullets.push({
+        x:player.x,
+        y:player.y,
+        size:8,
+        speed:12
+    });
+}
+
+function spawnEnemy(){
+
+    enemies.push({
+        x:Math.random()*canvas.width,
+        y:-100,
+        size:30 + Math.random()*30,
+        speed:2 + Math.random()*4,
+        color:`hsl(${Math.random()*360},100%,50%)`
+    });
+}
+
+function spawnMeteor(){
+
+    meteors.push({
+        x:Math.random()*canvas.width,
+        y:-100,
+        size:40 + Math.random()*60,
+        speed:4 + Math.random()*6
+    });
+}
+
+setInterval(()=>{
+    if(gameRunning){
+        spawnEnemy();
+    }
+},1000);
+
+setInterval(()=>{
+    if(gameRunning){
+        spawnMeteor();
+    }
+},2500);
+
+function drawBackground(){
+
+    ctx.fillStyle = "#050816";
+    ctx.fillRect(0,0,canvas.width,canvas.height);
+
+    for(let s of stars){
+
+        ctx.fillStyle = "white";
+
+        ctx.beginPath();
+        ctx.arc(s.x,s.y,s.size,0,Math.PI*2);
+        ctx.fill();
+
+        s.y += 0.5;
+
+        if(s.y > canvas.height){
+            s.y = 0;
+        }
+    }
+}
+
+function drawPlayer(){
+
+    ctx.save();
+
+    ctx.shadowColor = "#00ffff";
+    ctx.shadowBlur = 30;
+
+    ctx.fillStyle = "#00e1ff";
+
+    ctx.beginPath();
+    ctx.moveTo(player.x, player.y-player.size);
+    ctx.lineTo(player.x-player.size, player.y+player.size);
+    ctx.lineTo(player.x+player.size, player.y+player.size);
+    ctx.closePath();
+    ctx.fill();
+
+    ctx.restore();
+}
+
+function movePlayer(){
+
+    if(keys["w"] || keys["arrowup"]) player.y -= player.speed;
+    if(keys["s"] || keys["arrowdown"]) player.y += player.speed;
+    if(keys["a"] || keys["arrowleft"]) player.x -= player.speed;
+    if(keys["d"] || keys["arrowright"]) player.x += player.speed;
+
+    player.x = Math.max(0, Math.min(canvas.width, player.x));
+    player.y = Math.max(0, Math.min(canvas.height, player.y));
+}
+
+function drawBullets(){
+
+    bullets.forEach((b,index)=>{
+
+        b.y -= b.speed;
+
+        ctx.fillStyle = "#00ffff";
+
+        ctx.beginPath();
+        ctx.arc(b.x,b.y,b.size,0,Math.PI*2);
+        ctx.fill();
+
+        if(b.y < -20){
+            bullets.splice(index,1);
+        }
+    });
+}
+
+function drawEnemies(){
+
+    enemies.forEach((e,eIndex)=>{
+
+        e.y += e.speed;
+
+        ctx.save();
+
+        ctx.shadowColor = e.color;
+        ctx.shadowBlur = 20;
+
+        ctx.fillStyle = e.color;
+
+        ctx.beginPath();
+        ctx.arc(e.x,e.y,e.size,0,Math.PI*2);
+        ctx.fill();
+
+        ctx.restore();
+
+        let dx = player.x - e.x;
+        let dy = player.y - e.y;
+        let dist = Math.sqrt(dx*dx + dy*dy);
+
+        if(dist < player.size + e.size){
+
+            enemies.splice(eIndex,1);
+
+            player.health -= 15;
+
+            shake();
+
+            if(player.health <= 0){
+                endGame();
+            }
+        }
+
+        bullets.forEach((b,bIndex)=>{
+
+            let dx2 = b.x - e.x;
+            let dy2 = b.y - e.y;
+            let dist2 = Math.sqrt(dx2*dx2 + dy2*dy2);
+
+            if(dist2 < e.size){
+
+                createExplosion(e.x,e.y,e.color);
+
+                score += 10;
+                gems += 5;
+
+                gemsDrop.push({
+                    x:e.x,
+                    y:e.y,
+                    size:10
+                });
+
+                enemies.splice(eIndex,1);
+                bullets.splice(bIndex,1);
+            }
+        });
+
+    });
+}
+
+function drawMeteors(){
+
+    meteors.forEach((m,index)=>{
+
+        m.y += m.speed;
+
+        ctx.fillStyle = "#8b5a2b";
+
+        ctx.beginPath();
+        ctx.arc(m.x,m.y,m.size,0,Math.PI*2);
+        ctx.fill();
+
+        let dx = player.x - m.x;
+        let dy = player.y - m.y;
+        let dist = Math.sqrt(dx*dx + dy*dy);
+
+        if(dist < player.size + m.size){
+
+            player.health -= 25;
+
+            meteors.splice(index,1);
+
+            shake();
+
+            if(player.health <= 0){
+                endGame();
+            }
+        }
+    });
+}
+
+function drawGems(){
+
+    gemsDrop.forEach((g,index)=>{
+
+        ctx.fillStyle = "#00ff88";
+
+        ctx.beginPath();
+        ctx.arc(g.x,g.y,g.size,0,Math.PI*2);
+        ctx.fill();
+
+        let dx = player.x - g.x;
+        let dy = player.y - g.y;
+
+        let dist = Math.sqrt(dx*dx + dy*dy);
+
+        if(dist < player.size + g.size){
+
+            gems += 1;
+
+            gemsDrop.splice(index,1);
+        }
+    });
+}
+
+function createExplosion(x,y,color){
+
+    for(let i=0;i<25;i++){
+
+        particles.push({
+            x,
+            y,
+            dx:(Math.random()-0.5)*10,
+            dy:(Math.random()-0.5)*10,
+            size:Math.random()*6,
+            life:50,
+            color
+        });
+    }
+}
+
+function drawParticles(){
+
+    particles.forEach((p,index)=>{
+
+        p.x += p.dx;
+        p.y += p.dy;
+        p.life--;
+
+        ctx.fillStyle = p.color;
+
+        ctx.beginPath();
+        ctx.arc(p.x,p.y,p.size,0,Math.PI*2);
+        ctx.fill();
+
+        if(p.life <= 0){
+            particles.splice(index,1);
+        }
+    });
+}
+
+function updateUI(){
+
+    document.getElementById("score").innerText = score;
+    document.getElementById("gems").innerText = gems;
+    document.getElementById("health").innerText = player.health;
+    document.getElementById("level").innerText = level;
+
+    level = Math.floor(score/100)+1;
+}
+
+function buySpeed(){
+
+    if(gems >= 10){
+
+        gems -= 10;
+
+        player.speed += 1;
+    }
+}
+
+function buyLaser(){
+
+    if(gems >= 20){
+
+        gems -= 20;
+
+        player.laserPower += 1;
+    }
+}
+
+function heal(){
+
+    if(gems >= 15){
+
+        gems -= 15;
+
+        player.health = Math.min(100, player.health + 30);
+    }
+}
+
+function shake(){
+
+    document.body.style.transform =
+    `translate(${Math.random()*10-5}px,${Math.random()*10-5}px)`;
+
+    setTimeout(()=>{
+        document.body.style.transform = "translate(0px,0px)";
+    },80);
+}
+
+function endGame(){
+
+    gameRunning = false;
+
+    document.getElementById("gameOver").classList.remove("hidden");
+
+    document.getElementById("finalText").innerText =
+    `You reached level ${level} with ${score} points!`;
+}
+
+function animate(){
+
+    if(!gameRunning) return;
+
+    drawBackground();
+
+    movePlayer();
+
+    drawPlayer();
+
+    drawBullets();
+
+    drawEnemies();
+
+    drawMeteors();
+
+    drawGems();
+
+    drawParticles();
+
+    updateUI();
+
+    requestAnimationFrame(animate);
+}
+
+window.addEventListener("resize", ()=>{
+
+    canvas.width = innerWidth;
+    canvas.height = innerHeight;
+});
+
+</script>
+
+</body>
+</html>
